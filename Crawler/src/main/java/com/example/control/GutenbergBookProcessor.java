@@ -2,6 +2,7 @@ package com.example.control;
 
 import com.example.interfaces.BookProcessor;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,12 +13,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class GutenbergBookProcessor implements BookProcessor {
-    private static final String SAVE_DIR = "datalake";
+    private static final String PROCESSED_DIR = "datamart/processed_books"; // Ruta para los libros procesados
 
     @Override
     public void processBook(int bookId) {
         try {
-            Path bookPath = Paths.get(SAVE_DIR, bookId + ".txt");
+            Path bookPath = Paths.get("datalake", bookId + ".txt"); // Ubicación del libro crudo
             String text = new String(Files.readAllBytes(bookPath), "UTF-8");
 
             Pattern startPattern = Pattern.compile("\\*\\*\\* START OF THE PROJECT GUTENBERG EBOOK .+? \\*\\*\\*");
@@ -47,12 +48,22 @@ public class GutenbergBookProcessor implements BookProcessor {
                 }
 
                 String finalContent = String.join("\n\n", paragraphs);
-                Files.write(bookPath, finalContent.getBytes("UTF-8"));
+
+                // Guardar el libro procesado en la carpeta 'datamart/libros_procesados'
+                File processedDir = new File(PROCESSED_DIR);
+                if (!processedDir.exists()) {
+                    processedDir.mkdirs(); // Crear el directorio si no existe
+                }
+
+                Path processedBookPath = Paths.get(PROCESSED_DIR, bookId + "_procesado.txt");
+                Files.write(processedBookPath, finalContent.getBytes("UTF-8"));
+
+                System.out.println("El libro procesado con ID " + bookId + " ha sido guardado en: " + processedBookPath);
             } else {
-                System.out.println("No start or end marks were found for the book with ID " + bookId + ". Processing stops for this book.");
+                System.out.println("No se encontraron las marcas de inicio o fin para el libro con ID " + bookId + ". El procesamiento se detiene para este libro.");
             }
         } catch (IOException e) {
-            System.out.println("Error processing book with ID " + bookId + ": " + e.getMessage());
+            System.out.println("Error al procesar el libro con ID " + bookId + ": " + e.getMessage());
         }
     }
 }

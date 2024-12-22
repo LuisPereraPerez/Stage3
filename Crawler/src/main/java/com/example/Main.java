@@ -1,5 +1,6 @@
-package com.example.control;
+package com.example;
 
+import com.example.control.*;
 import com.example.interfaces.*;
 
 public class Main {
