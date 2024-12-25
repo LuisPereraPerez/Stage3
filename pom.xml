@@ -10,6 +10,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>Crawler</module>
+        <module>Indexer</module>
     </modules>
 
     <properties>
