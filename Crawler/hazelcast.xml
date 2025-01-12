@@ -1,0 +1,17 @@
+<hazelcast>
+    <network>
+        <join>
+            <multicast enabled="false"/>
+            <tcp-ip enabled="true">
+                <member>hazelcast-node1:5701</member>
+                <member>hazelcast-node2:5701</member>
+                <member>hazelcast-node3:5701</member>
+            </tcp-ip>
+        </join>
+    </network>
+
+    <map name="books">
+        <backup-count>1</backup-count> <!-- Número de copias de respaldo en otros nodos -->
+        <async-backup-count>1</async-backup-count> <!-- Copia de seguridad asíncrona -->
+    </map>
+</hazelcast>

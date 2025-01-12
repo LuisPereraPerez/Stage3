@@ -1,11 +1,6 @@
 package com.example.control;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-
+import com.example.interfaces.BookDownloader;
 import org.apache.hc.client5.http.HttpResponseException;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -13,11 +8,12 @@ import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.util.Timeout;
-import com.example.interfaces.BookDownloader;
-
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+
+import java.io.*;
+import java.net.URI;
 
 public class GutenbergBookDownloader implements BookDownloader {
     private final String saveDir;
@@ -62,25 +58,27 @@ public class GutenbergBookDownloader implements BookDownloader {
                                 out.write(buffer, 0, bytesRead);
                             }
 
-                            System.out.println("The book with ID " + bookId + " successfully downloaded.");
+                            //System.out.println("El libro con ID " + bookId + " ha sido descargado.");
                         }
                     } else {
-                        throw new HttpResponseException(status, "Could not download the book.");
+                        throw new HttpResponseException(status, "No se pudo descargar el libro.");
                     }
                 }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         } else {
-            System.out.println("The book with ID " + bookId + " does not have a text file available.");
+            System.out.println("El libro con ID " + bookId + " no tiene archivo de texto disponible.");
         }
     }
 
     private static String getTextLink(Document doc) {
         Element link = doc.select("a[href]").stream()
-                .filter(a -> a.text().equals("Plain Text UTF-8")) // Buscar enlace al texto
+                .filter(a -> a.text().equals("Plain Text UTF-8"))
                 .findFirst()
                 .orElse(null);
         if (link != null) {
-            return "https://www.gutenberg.org" + link.attr("href"); // Construir URL completa
+            return "https://www.gutenberg.org" + link.attr("href");
         }
         return null;
     }

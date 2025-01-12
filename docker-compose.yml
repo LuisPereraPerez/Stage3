@@ -1,0 +1,45 @@
+services:
+  hazelcast-node1:
+    build:
+      context: .
+      dockerfile: ./Crawler/Dockerfile
+    ports:
+      - "5701:5701"
+    environment:
+      - HAZELCAST_NODE_ID=node1
+    volumes:
+      - ./datalake_node1:/app/datalake
+      - ./recursos_crawler_node1:/app/recursos_crawler
+      - ./datamart_node1:/app/datamart
+
+  hazelcast-node2:
+    build:
+      context: .
+      dockerfile: ./Crawler/Dockerfile
+    ports:
+      - "5702:5701"
+    environment:
+      - HAZELCAST_NODE_ID=node2
+    volumes:
+      - ./datalake_node2:/app/datalake
+      - ./recursos_crawler_node2:/app/recursos_crawler
+      - ./datamart_node2:/app/datamart
+
+  hazelcast-node3:
+    build:
+      context: .
+      dockerfile: ./Crawler/Dockerfile
+    ports:
+      - "5703:5701"
+    environment:
+      - HAZELCAST_NODE_ID=node3
+    volumes:
+      - ./datalake_node3:/app/datalake
+      - ./recursos_crawler_node3:/app/recursos_crawler
+      - ./datamart_node3:/app/datamart
+
+  hazelcast-management-center:
+    image: hazelcast/management-center:5.3.1
+    container_name: hazelcast-mc
+    ports:
+      - "8080:8080"
