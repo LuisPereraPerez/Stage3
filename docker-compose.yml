@@ -1,45 +1,167 @@
+version: '3.8'
+
 services:
-  hazelcast-node1:
+  # Node 1
+  node1-crawler:
     build:
-      context: .
-      dockerfile: ./Crawler/Dockerfile
+      context: ./Crawler
+      dockerfile: Dockerfile
+    container_name: node1-crawler
     ports:
       - "5701:5701"
     environment:
-      - HAZELCAST_NODE_ID=node1
+      - HAZELCAST_NODE_ID=node1-crawler
     volumes:
-      - ./datalake_node1:/app/datalake
-      - ./recursos_crawler_node1:/app/recursos_crawler
-      - ./datamart_node1:/app/datamart
+      - ./node1/datalake:/app/datalake
+      - ./node1/recursos_crawler:/app/recursos_crawler
+      - ./node1/datamart:/app/datamart
+    restart: always
 
-  hazelcast-node2:
+  node1-indexer:
     build:
-      context: .
-      dockerfile: ./Crawler/Dockerfile
+      context: ./Indexer
+      dockerfile: Dockerfile
+    container_name: node1-indexer
+    environment:
+      - DATASOURCE=/app/datalake
+      - METADATA_FILE=/app/datamart/metadatos_libros.csv
+    volumes:
+      - ./node1/datalake:/app/datalake
+      - ./node1/datamart:/app/datamart
+      - ./node1/indexer_resources:/app/indexer_resources
+    depends_on:
+      - node1-crawler
+    restart: always
+
+  node1-query:
+    build:
+      context: ./QueryEngine
+      dockerfile: Dockerfile
+    container_name: node1-query
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./node1/datalake:/app/datalake
+      - ./node1/datamart:/app/datamart
+    depends_on:
+      - node1-indexer
+    restart: always
+
+  # Node 2
+  node2-crawler:
+    build:
+      context: ./Crawler
+      dockerfile: Dockerfile
+    container_name: node2-crawler
     ports:
       - "5702:5701"
     environment:
-      - HAZELCAST_NODE_ID=node2
+      - HAZELCAST_NODE_ID=node2-crawler
     volumes:
-      - ./datalake_node2:/app/datalake
-      - ./recursos_crawler_node2:/app/recursos_crawler
-      - ./datamart_node2:/app/datamart
+      - ./node2/datalake:/app/datalake
+      - ./node2/recursos_crawler:/app/recursos_crawler
+      - ./node2/datamart:/app/datamart
+    restart: always
 
-  hazelcast-node3:
+  node2-indexer:
     build:
-      context: .
-      dockerfile: ./Crawler/Dockerfile
+      context: ./Indexer
+      dockerfile: Dockerfile
+    container_name: node2-indexer
+    environment:
+      - DATASOURCE=/app/datalake
+      - METADATA_FILE=/app/datamart/metadatos_libros.csv
+    volumes:
+      - ./node2/datalake:/app/datalake
+      - ./node2/datamart:/app/datamart
+      - ./node2/indexer_resources:/app/indexer_resources
+    depends_on:
+      - node2-crawler
+    restart: always
+
+  node2-query:
+    build:
+      context: ./QueryEngine
+      dockerfile: Dockerfile
+    container_name: node2-query
+    ports:
+      - "8082:8080"
+    volumes:
+      - ./node2/datalake:/app/datalake
+      - ./node2/datamart:/app/datamart
+    depends_on:
+      - node2-indexer
+    restart: always
+
+  # Node 3
+  node3-crawler:
+    build:
+      context: ./Crawler
+      dockerfile: Dockerfile
+    container_name: node3-crawler
     ports:
       - "5703:5701"
     environment:
-      - HAZELCAST_NODE_ID=node3
+      - HAZELCAST_NODE_ID=node3-crawler
     volumes:
-      - ./datalake_node3:/app/datalake
-      - ./recursos_crawler_node3:/app/recursos_crawler
-      - ./datamart_node3:/app/datamart
+      - ./node3/datalake:/app/datalake
+      - ./node3/recursos_crawler:/app/recursos_crawler
+      - ./node3/datamart:/app/datamart
+    restart: always
 
+  node3-indexer:
+    build:
+      context: ./Indexer
+      dockerfile: Dockerfile
+    container_name: node3-indexer
+    environment:
+      - DATASOURCE=/app/datalake
+      - METADATA_FILE=/app/datamart/metadatos_libros.csv
+    volumes:
+      - ./node3/datalake:/app/datalake
+      - ./node3/datamart:/app/datamart
+      - ./node3/indexer_resources:/app/indexer_resources
+    depends_on:
+      - node3-crawler
+    restart: always
+
+  node3-query:
+    build:
+      context: ./QueryEngine
+      dockerfile: Dockerfile
+    container_name: node3-query
+    ports:
+      - "8083:8080"
+    volumes:
+      - ./node3/datalake:/app/datalake
+      - ./node3/datamart:/app/datamart
+    depends_on:
+      - node3-indexer
+    restart: always
+
+  # Service NGINX
+  nginx:
+    image: nginx:latest
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - node1-query
+      - node2-query
+      - node3-query
+    restart: always
+
+  # Hazelcast Management Center
   hazelcast-management-center:
     image: hazelcast/management-center:5.3.1
     container_name: hazelcast-mc
     ports:
       - "8080:8080"
+    restart: always
+
+networks:
+  default:
+    name: cluster-network
+    driver: bridge

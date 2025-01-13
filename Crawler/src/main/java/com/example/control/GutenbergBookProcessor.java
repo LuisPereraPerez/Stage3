@@ -11,11 +11,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class GutenbergBookProcessor implements BookProcessor {
-    private static final String PROCESSED_DIR = "datalake"; // Ruta para los libros procesados
-    private static final String CSV_FILE_PATH = "datamart/metadatos_libros.csv"; // Ruta para el archivo CSV
+    private static final String PROCESSED_DIR = "datalake"; // Path for processed books
+    private static final String CSV_FILE_PATH = "datamart/book_metadata.csv"; // Path for the CSV file
     private static final String HEADER = "ID,Title,Author,Language";
 
-    // Patrones para extraer los metadatos (ajustarlos según el formato de los libros)
+    // Patterns to extract metadata (adjust them according to the book format)
     private static final Pattern titlePattern = Pattern.compile("Title: (.+)");
     private static final Pattern authorPattern = Pattern.compile("Author: (.+)");
     private static final Pattern languagePattern = Pattern.compile("Language: (.+)");
@@ -23,25 +23,22 @@ public class GutenbergBookProcessor implements BookProcessor {
     @Override
     public void processBook(int bookId) {
         try {
-            Path bookPath = Paths.get("datalake", bookId + ".txt"); // Ubicación del libro crudo
+            Path bookPath = Paths.get("datalake", bookId + ".txt"); // Location of the raw book
             String text = new String(Files.readAllBytes(bookPath), "UTF-8");
 
-            // Extraer metadatos
+            // Extract metadata
             Map<String, String> metadata = extractMetadata(bookId);
 
-            // Si los metadatos fueron extraídos con éxito, imprimirlos y guardarlos en CSV
+            // If metadata is successfully extracted, print and save it in the CSV
             if (metadata != null) {
-                // Imprimir metadatos
-                //System.out.println("Metadatos para el libro con ID " + bookId + ":");
-                //for (Map.Entry<String, String> entry : metadata.entrySet()) {
-                //    System.out.println(entry.getKey() + ": " + entry.getValue());
-                //}
-
-                // Guardar metadatos en el archivo CSV
+                // Save metadata in the CSV file
                 writeMetadata(metadata);
+
+                // Clean and sort the metadata file after saving
+                cleanAndSortMetadata();
             }
 
-            // Buscar los delimitadores de Gutenberg para extraer solo el contenido del libro
+            // Search for Gutenberg delimiters to extract only the book content
             Pattern startPattern = Pattern.compile("\\*\\*\\* START OF THE PROJECT GUTENBERG EBOOK .+? \\*\\*\\*");
             Pattern endPattern = Pattern.compile("\\*\\*\\* END OF THE PROJECT GUTENBERG EBOOK .+? \\*\\*\\*");
 
@@ -54,7 +51,7 @@ public class GutenbergBookProcessor implements BookProcessor {
                 List<String> paragraphs = new ArrayList<>();
                 StringBuilder currentParagraph = new StringBuilder();
 
-                // Procesar el contenido del libro
+                // Process the book content
                 for (String line : lines) {
                     line = line.trim();
                     if (!line.isEmpty()) {
@@ -71,24 +68,24 @@ public class GutenbergBookProcessor implements BookProcessor {
 
                 String finalContent = String.join("\n\n", paragraphs);
 
-                // Guardar el libro procesado en la carpeta 'datamart/libros_procesados'
+                // Save the processed book in the folder 'datamart/processed_books'
                 File processedDir = new File(PROCESSED_DIR);
                 if (!processedDir.exists()) {
-                    processedDir.mkdirs(); // Crear el directorio si no existe
+                    processedDir.mkdirs(); // Create the directory if it does not exist
                 }
 
                 Path processedBookPath = Paths.get(PROCESSED_DIR, bookId + ".txt");
                 Files.write(processedBookPath, finalContent.getBytes("UTF-8"));
 
-                System.out.println("El libro procesado con ID " + bookId + " ha sido guardado en: " + processedBookPath);
+                System.out.println("The processed book with ID " + bookId + " has been saved at: " + processedBookPath);
             }
 
         } catch (IOException e) {
-            System.out.println("Error al procesar el libro con ID " + bookId + ": " + e.getMessage());
+            System.out.println("Error processing the book with ID " + bookId + ": " + e.getMessage());
         }
     }
 
-    // Método para extraer los metadatos del libro
+    // Method to extract the book's metadata
     public Map<String, String> extractMetadata(int bookId) {
         Map<String, String> metadata = new HashMap<>();
         File bookFile = new File("datalake" + "/" + bookId + ".txt");
@@ -96,7 +93,7 @@ public class GutenbergBookProcessor implements BookProcessor {
         try {
             String text = new String(Files.readAllBytes(Paths.get(bookFile.toURI())), "UTF-8");
 
-            // Extraer los metadatos usando las expresiones regulares
+            // Extract metadata using regular expressions
             metadata.put("ID", String.valueOf(bookId));
             metadata.put("Title", extract(titlePattern, text));
             metadata.put("Author", extract(authorPattern, text));
@@ -104,18 +101,18 @@ public class GutenbergBookProcessor implements BookProcessor {
 
             return metadata;
         } catch (IOException e) {
-            System.out.println("Error al leer el libro con ID " + bookId + ": " + e.getMessage());
+            System.out.println("Error reading the book with ID " + bookId + ": " + e.getMessage());
             return null;
         }
     }
 
-    // Método privado para extraer un campo de texto usando un patrón regular
+    // Private method to extract a text field using a regular pattern
     private String extract(Pattern pattern, String text) {
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1) : "Unknown";
     }
 
-    // Método para escapar valores para el formato CSV
+    // Method to escape values for CSV format
     private String escapeForCSV(String value) {
         if (value == null) {
             return "";
@@ -123,62 +120,112 @@ public class GutenbergBookProcessor implements BookProcessor {
         return "\"" + value.replace("\"", "\"\"") + "\"";
     }
 
-    // Método para escribir metadatos en un archivo CSV
+    // Method to write metadata into a CSV file
     public void writeMetadata(Map<String, String> metadata) {
-            File file = new File(CSV_FILE_PATH);
-            File directory = file.getParentFile();
+        File file = new File(CSV_FILE_PATH);
+        File directory = file.getParentFile();
 
-            if (directory != null && !directory.exists()) {
-                if (!directory.mkdirs()) {
-                    System.out.println("No se pudo crear el directorio: " + directory.getAbsolutePath());
-                    return;
-                }
+        if (directory != null && !directory.exists()) {
+            if (!directory.mkdirs()) {
+                System.out.println("Failed to create the directory: " + directory.getAbsolutePath());
+                return;
+            }
+        }
+
+        boolean isNewFile = !file.exists();
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, true))) {
+            // Add the header only if the file is new
+            if (isNewFile) {
+                writer.write(HEADER);
+                writer.newLine();
             }
 
-            boolean isNewFile = !file.exists();
+            // Check if the ID is already in the file before writing
+            String id = metadata.getOrDefault("ID", "");
+            if (id.isEmpty()) {
+                System.out.println("The book ID is missing, skipping.");
+                return;
+            }
 
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, true))) {
-                // Agregar la cabecera solo si el archivo es nuevo
-                if (isNewFile) {
-                    writer.write(HEADER);
-                    writer.newLine();
-                }
-
-                // Verificar si el ID ya está en el archivo antes de escribir
-                String id = metadata.getOrDefault("ID", "");
-                if (id.isEmpty()) {
-                    System.out.println("El ID del libro está ausente, se omite.");
-                    return;
-                }
-
-                if (!isDuplicate(id)) {
-                    String csvLine = String.join(",",
-                            id,
-                            escapeForCSV(metadata.getOrDefault("Title", "")),
-                            escapeForCSV(metadata.getOrDefault("Author", "")),
-                            escapeForCSV(metadata.getOrDefault("Language", "")));
-                    writer.write(csvLine);
-                    writer.newLine();
-                    System.out.println("Metadatos guardados: " + csvLine);
-                } else {
-                    System.out.println("Entrada duplicada encontrada para el ID: " + id);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
+            if (!isDuplicate(id)) {
+                String csvLine = String.join(",",
+                        id,
+                        escapeForCSV(metadata.getOrDefault("Title", "")),
+                        escapeForCSV(metadata.getOrDefault("Author", "")),
+                        escapeForCSV(metadata.getOrDefault("Language", "")));
+                writer.write(csvLine);
+                writer.newLine();
+            } else {
+                System.out.println("Duplicate entry found for ID: " + id);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
-    // Método para verificar si un ID ya está presente en el archivo CSV
+    // Method to check if an ID is already present in the CSV file
     private boolean isDuplicate(String id) throws IOException {
-            try (BufferedReader reader = new BufferedReader(new FileReader(CSV_FILE_PATH))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String[] columns = line.split(",", -1);
-                    if (columns.length > 0 && columns[0].trim().equals(id.trim())) {
-                        return true;
+        try (BufferedReader reader = new BufferedReader(new FileReader(CSV_FILE_PATH))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] columns = line.split(",", -1);
+                if (columns.length > 0 && columns[0].trim().equals(id.trim())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // Method to clean and sort the metadata file
+    public void cleanAndSortMetadata() {
+        try {
+            Path filePath = Paths.get(CSV_FILE_PATH);
+
+            // Read all records from the CSV file
+            List<String> lines = Files.readAllLines(filePath);
+
+            // Separate the header and the data
+            String header = HEADER;
+            List<String> records = new ArrayList<>();
+
+            for (String line : lines) {
+                if (!line.equals(header)) { // Skip duplicate headers
+                    records.add(line);
+                }
+            }
+
+            // Use a TreeMap to sort by ID and remove duplicates
+            Map<Integer, String> sortedRecords = new TreeMap<>();
+
+            for (String record : records) {
+                String[] columns = record.split(",", -1);
+                if (columns.length > 0) {
+                    try {
+                        int id = Integer.parseInt(columns[0].trim()); // Parse the ID
+                        sortedRecords.put(id, record); // TreeMap handles duplicates automatically
+                    } catch (NumberFormatException e) {
+                        System.err.println("Invalid record, cannot parse ID: " + record);
                     }
                 }
             }
-            return false;
+
+            // Rewrite the CSV file with the sorted records
+            try (BufferedWriter writer = Files.newBufferedWriter(filePath)) {
+                writer.write(header);
+                writer.newLine();
+                for (String record : sortedRecords.values()) {
+                    writer.write(record);
+                    writer.newLine();
+                }
+            }
+
+            System.out.println("Metadata cleaned and sorted successfully.");
+
+        } catch (IOException e) {
+            System.err.println("Error cleaning and sorting the metadata file: " + e.getMessage());
+        }
     }
+
 }

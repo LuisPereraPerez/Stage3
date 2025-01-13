@@ -1,0 +1,16 @@
+<jwnl_properties>
+    <dictionary>
+        <param class="net.sf.extjwnl.dictionary.file.DictionaryFileBackedFactory">
+            <files>
+                <file lang="en" name="data.noun" path="resources/wordnet/dict/data.noun"/>
+                <file lang="en" name="data.verb" path="resources/wordnet/dict/data.verb"/>
+                <file lang="en" name="data.adj" path="resources/wordnet/dict/data.adj"/>
+                <file lang="en" name="data.adv" path="resources/wordnet/dict/data.adv"/>
+                <file lang="en" name="index.noun" path="resources/wordnet/dict/index.noun"/>
+                <file lang="en" name="index.verb" path="resources/wordnet/dict/index.verb"/>
+                <file lang="en" name="index.adj" path="resources/wordnet/dict/index.adj"/>
+                <file lang="en" name="index.adv" path="resources/wordnet/dict/index.adv"/>
+            </files>
+        </param>
+    </dictionary>
+</jwnl_properties>

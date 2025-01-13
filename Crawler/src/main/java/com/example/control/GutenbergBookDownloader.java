@@ -57,18 +57,16 @@ public class GutenbergBookDownloader implements BookDownloader {
                             while ((bytesRead = in.read(buffer)) != -1) {
                                 out.write(buffer, 0, bytesRead);
                             }
-
-                            //System.out.println("El libro con ID " + bookId + " ha sido descargado.");
                         }
                     } else {
-                        throw new HttpResponseException(status, "No se pudo descargar el libro.");
+                        throw new HttpResponseException(status, "The book could not be downloaded.");
                     }
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         } else {
-            System.out.println("El libro con ID " + bookId + " no tiene archivo de texto disponible.");
+            System.out.println("The book with ID " + bookId + " has no text file available.");
         }
     }
 
