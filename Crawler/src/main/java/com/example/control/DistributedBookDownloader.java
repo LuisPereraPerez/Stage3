@@ -84,20 +84,30 @@ public class DistributedBookDownloader {
 
         int totalLibros = idsDeLibros.size();
         int librosPorNodo = totalLibros / listaDeMiembros.size();
+        int librosRestantes = totalLibros % listaDeMiembros.size(); // Libros sobrantes a repartir
 
+        int inicioIdx = 0;
         for (int i = 0; i < listaDeMiembros.size(); i++) {
-            int inicioIdx = i * librosPorNodo;
-            int finIdx = (i == listaDeMiembros.size() - 1) ? totalLibros : (i + 1) * librosPorNodo;
+            // Calcular finIdx considerando los libros sobrantes distribuidos
+            int librosExtra = (i < librosRestantes) ? 1 : 0;
+            int finIdx = inicioIdx + librosPorNodo + librosExtra;
 
+            // Subconjunto de libros para este nodo
             List<Integer> subconjuntoDeLibros = idsDeLibros.subList(inicioIdx, finIdx);
             Member miembroDestino = listaDeMiembros.get(i);
-            System.out.printf("Assigning from book %d to %d to node: %s%n", inicioIdx, finIdx - 1, miembroDestino);
 
+            System.out.printf("Assigning books %d to %d to node: %s%n", inicioIdx, finIdx - 1, miembroDestino);
+
+            // Enviar tarea al nodo correspondiente
             Future<String> futuro = servicioEjecutor.submitToMember(
                     new BookDownloadTask(subconjuntoDeLibros), miembroDestino);
             futuros.add(futuro);
+
+            // Actualizar el índice inicial para el siguiente nodo
+            inicioIdx = finIdx;
         }
 
+        // Recoger resultados
         List<String> resultados = new ArrayList<>();
         for (Future<String> futuro : futuros) {
             try {
